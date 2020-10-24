@@ -1,9 +1,10 @@
+from django.contrib.postgres.search import SearchVector
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.generic import ListView
 from django.core.mail import send_mail
 from .models import Post, Comment
-from .forms import EmailPostForm, CommentForm
+from .forms import EmailPostForm, CommentForm, SearchForm
 from taggit.models import Tag
 
 
@@ -98,3 +99,21 @@ def post_detail(request, year, month, day, post):
                    'comments': comments,
                    'new_comment': new_comment,
                    'comment_form': comment_form})
+
+
+def post_search(request):
+    form = SearchForm()
+    query = None
+    results = []
+    if 'query' in request.GET:
+        form = SearchForm(request.GET)
+        if form.is_valid():
+            query = form.cleaned_data['query']
+            results = Post.published.annotate(
+                search=SearchVector('title', 'body'),
+            ).filter(search=query)
+    return render(request,
+                  'blog/post/search.html',
+                  {'form': form,
+                   'query': query,
+                   'results': results})
